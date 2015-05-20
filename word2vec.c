@@ -2,10 +2,27 @@
 #include "Rmath.h"
 #include "word2vec.h"
 
-void tmcn_word2vec(char *train_file0, char *output_file0, char *binary0)
+void tmcn_word2vec(char *train_file0, 
+        char *output_file0, 
+        char *binary0, 
+        char *cbow0, 
+        char *num_threads0,
+        char *vocab_max_size0,
+        char *window0,
+        char *min_count0,
+        char *sample0
+        )
 {
 	int i;
+    
+    cbow = atoi(cbow0); 
 	binary = atoi(binary0);
+    num_threads = atoi(num_threads0);
+    vocab_max_size = atoi(vocab_max_size0);
+    window = atoi(window0);
+    min_count = atoi(min_count0);
+    sample = atof(sample0);
+    
 	strcpy(train_file, train_file0);
 	strcpy(output_file, output_file0);
 	vocab = (struct vocab_word *)calloc(vocab_max_size, sizeof(struct vocab_word));
@@ -19,8 +36,17 @@ void tmcn_word2vec(char *train_file0, char *output_file0, char *binary0)
 }
 
 
-void CWrapper_word2vec(char **train_file, char **output_file, char **binary)
+void CWrapper_word2vec(char **train_file, 
+        char **output_file, 
+        char **binary, 
+        char **cbow, 
+        char **num_threads,
+        char **vocab_max_size,
+        char **window,
+        char **min_count,
+        char **sample)
 {
-    tmcn_word2vec(*train_file, *output_file, *binary);
+    tmcn_word2vec(*train_file, *output_file, *binary, *cbow, *num_threads, *vocab_max_size, 
+            *window, *min_count, *sample);
 }
 
