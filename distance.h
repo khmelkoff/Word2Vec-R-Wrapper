@@ -17,10 +17,13 @@
 #include <math.h>
 
 const long long max_size = 2000;         // max length of strings
-const long long N = 20;                  // number of closest words that will be shown
+long long N; //= 20;                  // number of closest words that will be shown
 const long long max_w = 50;              // max length of vocabulary entries
 
-void distance(char *file_name0, char *word0, char *returnw, double *returnd) {
+void distance(char *file_name0, char *word0, char *returnw, double *returnd, char *size0) {
+    
+    N = atoi(size0);
+        
   FILE *f;
   char st1[max_size];
   char bestw[N][max_size];
