@@ -86,7 +86,7 @@ rm(rws)
 
 
 # Train model #################################################################
-# dyn.unload("word2vec.dll")
+# dyn.unload("word2vec.dll") # for recompiling
 dyn.load("word2vec.dll")
 
 word2vec <- function(train_file, output_file, 
@@ -96,7 +96,8 @@ word2vec <- function(train_file, output_file,
                      num_features,
                      window,
                      min_count,
-                     sample)
+                     sample,
+                     classes)
 {
     if (!file.exists(train_file)) stop("Can't find the train file!")
     train_dir <- dirname(train_file)
@@ -121,7 +122,8 @@ word2vec <- function(train_file, output_file,
               vocab_max_size = as.character(num_features),
               window = as.character(window),
               min_count = as.character(min_count),
-              sample = as.character(sample))
+              sample = as.character(sample),
+              classes = as.character(classes))
     
     class(OUT) <- "word2vec"
     names(OUT)[2] <- "model_file"
@@ -131,21 +133,22 @@ word2vec <- function(train_file, output_file,
 
 # Train model
 tstart <- Sys.time()
-word2vec("text8.txt", "model8.bin", 
+word2vec("train_data.txt", "model.bin", 
          binary=1, # output format, 1-binary, 0-txt
          cbow=0, # skip-gram (0) or continuous bag of words (1)
          num_threads = 6, # num of workers
          num_features = 300, # word vector dimensionality
          window = 10, # context / window size
          min_count = 40, # minimum word count
-         sample = 1e-3 # downsampling of frequent words
+         sample = 1e-3, # downsampling of frequent words
+         classes = 0 # if >0 make k-means clustering 
          )
 tend <- Sys.time()
 tend - tstart
 
 # Check model #################################################################
 # dyn.unload("distance")
-dyn.load("distance.dll")
+dyn.load("dll/distance.dll")
 
 distance <- function(file_name, word, size)
 {
@@ -165,35 +168,15 @@ distance <- function(file_name, word, size)
     return(data.frame(Word = vword, CosDist = vdist, stringsAsFactors = FALSE))
 }
 
-distance("model.bin", "bad", 10)
+distance("model.bin", "bad", 15)
+distance("model.bin", "good", 10)
 
 # Doesnt match ################################################################
-
-doesnt_match <- function(string, dist) {
-    rw <- tokenize(string)
-    dst <- as.list()
-    if(length(rw)>2) {
-        for (i in 1:length(rw)) {
-            dst[i,1]=distance("model.bin", rw[i], dist)[1]
-        }
-        return(dst)
-        
-    } else {
-        print("Please enter at least three words!")
-    }
-}
-
-
-doesnt_match("bad good red", 100)
-
-
-
-
 
 
 # Word analogy ################################################################
 # dyn.unload("word-analogy.dll")
-dyn.load("word-analogy.dll")
+dyn.load("dll/word-analogy.dll")
 
 analogy <- function(file_name, words, size)
 {
@@ -213,5 +196,30 @@ analogy <- function(file_name, words, size)
     return(data.frame(Word = vword, CosDist = vdist, stringsAsFactors = FALSE)) 
 }    
 
-a <- analogy("model.bin", "man woman child", 3)
+analogy("model.bin", "man woman husband", 3)
+analogy("model.bin", "man woman child", 3)
+analogy("model.bin", "man woman boy", 3)
 
+# Word clustering #############################################################
+
+# Clustering
+tstart <- Sys.time()
+word2vec("train_data.txt", "classes.txt", 
+         binary=1, # output format, 1-binary, 0-txt
+         cbow=0, # skip-gram (0) or continuous bag of words (1)
+         num_threads = 6, # num of workers
+         num_features = 300, # word vector dimensionality
+         window = 10, # context / window size
+         min_count = 40, # minimum word count
+         sample = 1e-3, # downsampling of frequent words
+         classes = 3000 # if >0 make k-means clustering 
+)
+tend <- Sys.time()
+tend - tstart
+
+
+clasters <- read.table("classes.txt", sep=" ", as.is = TRUE)
+names(clasters) <- c("word", "id")
+clasters <- clasters[order(clasters$id),]
+max(clasters$id)
+clasters[clasters$id==0,]
