@@ -10,7 +10,8 @@ void tmcn_word2vec(char *train_file0,
         char *vocab_max_size0,
         char *window0,
         char *min_count0,
-        char *sample0
+        char *sample0,
+        char *classes0
         )
 {
 	int i;
@@ -22,6 +23,7 @@ void tmcn_word2vec(char *train_file0,
     window = atoi(window0);
     min_count = atoi(min_count0);
     sample = atof(sample0);
+    classes = atoi(classes0);
     
 	strcpy(train_file, train_file0);
 	strcpy(output_file, output_file0);
@@ -44,9 +46,10 @@ void CWrapper_word2vec(char **train_file,
         char **vocab_max_size,
         char **window,
         char **min_count,
-        char **sample)
+        char **sample,
+        char **classes)
 {
     tmcn_word2vec(*train_file, *output_file, *binary, *cbow, *num_threads, *vocab_max_size, 
-            *window, *min_count, *sample);
+            *window, *min_count, *sample, *classes);
 }
 
