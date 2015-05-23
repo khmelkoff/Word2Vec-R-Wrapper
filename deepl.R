@@ -1,6 +1,6 @@
 ###############################################################################
 # Deepl learning with word2vector
-# Version: 1
+# Version: 2
 # author: khmelkoff
 ###############################################################################
 
@@ -131,7 +131,7 @@ word2vec <- function(train_file, output_file,
 
 # Train model
 tstart <- Sys.time()
-word2vec("train_data.txt", "model.bin", 
+word2vec("text8.txt", "model8.bin", 
          binary=1, # output format, 1-binary, 0-txt
          cbow=0, # skip-gram (0) or continuous bag of words (1)
          num_threads = 6, # num of workers
@@ -152,8 +152,6 @@ distance <- function(file_name, word, size)
     
     if (!file.exists(file_name)) stop("Can't find the model file!")
     
-    # N <- 10
-    
     OUT <- .C("CWrapper_distance", 
               file_name = as.character(file_name), 
               word = as.character(word),
@@ -169,5 +167,51 @@ distance <- function(file_name, word, size)
 
 distance("model.bin", "bad", 10)
 
+# Doesnt match ################################################################
 
+doesnt_match <- function(string, dist) {
+    rw <- tokenize(string)
+    dst <- as.list()
+    if(length(rw)>2) {
+        for (i in 1:length(rw)) {
+            dst[i,1]=distance("model.bin", rw[i], dist)[1]
+        }
+        return(dst)
+        
+    } else {
+        print("Please enter at least three words!")
+    }
+}
+
+
+doesnt_match("bad good red", 100)
+
+
+
+
+
+
+# Word analogy ################################################################
+# dyn.unload("word-analogy.dll")
+dyn.load("word-analogy.dll")
+
+analogy <- function(file_name, words, size)
+{
+    if (!file.exists(file_name)) stop("Can't find the model file!")
+    
+    OUT <- .C("CWrapper_analogy", 
+              file_name = as.character(file_name), 
+              words = as.character(words),
+              returnw = "",
+              returnd = as.double(rep(0,as.integer(size))),
+              size = as.character(size))
+    
+    # return(OUT)
+    vword <- strsplit(gsub("^ *", "", OUT$returnw), split = " ")[[1]]
+    vdist <- OUT$returnd
+    if (length(vword) == 0) vdist <- numeric()
+    return(data.frame(Word = vword, CosDist = vdist, stringsAsFactors = FALSE)) 
+}    
+
+a <- analogy("model.bin", "man woman child", 3)
 
