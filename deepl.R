@@ -86,8 +86,8 @@ rm(rws)
 
 
 # Train model #################################################################
-# dyn.unload("word2vec.dll") # for recompiling
-dyn.load("word2vec.dll")
+# dyn.unload("dll/word2vec.dll") # for recompiling
+dyn.load("dll/word2vec.dll")
 
 word2vec <- function(train_file, output_file, 
                      binary,
@@ -119,7 +119,7 @@ word2vec <- function(train_file, output_file,
               binary = as.character(binary),
               cbow = as.character(cbow),
               num_threads = as.character(num_threads),
-              vocab_max_size = as.character(num_features),
+              num_features = as.character(num_features),
               window = as.character(window),
               min_count = as.character(min_count),
               sample = as.character(sample),
@@ -133,8 +133,8 @@ word2vec <- function(train_file, output_file,
 
 # Train model
 tstart <- Sys.time()
-word2vec("train_data.txt", "model.bin", 
-         binary=1, # output format, 1-binary, 0-txt
+word2vec("train_data.txt", "model300.txt", 
+         binary=0, # output format, 1-binary, 0-txt
          cbow=0, # skip-gram (0) or continuous bag of words (1)
          num_threads = 6, # num of workers
          num_features = 300, # word vector dimensionality
@@ -168,10 +168,53 @@ distance <- function(file_name, word, size)
     return(data.frame(Word = vword, CosDist = vdist, stringsAsFactors = FALSE))
 }
 
-distance("model.bin", "bad", 15)
-distance("model.bin", "good", 10)
+distance("model300.bin", "bad", 15)
+distance("model300.bin", "good", 15)
 
-# Doesnt match ################################################################
+# Differences #################################################################
+
+model <- read.table("model300.txt", sep=" ", as.is = TRUE, skip=1)
+names(model)[1] <- "word"
+
+similarity <- function(word1, word2, model) {
+    size <- ncol(model)-1
+    vec1 <- model[model$word==word1,2:size]
+    vec2 <- model[model$word==word2,2:size]
+    sim <- sum(vec1 * vec2)
+    sim <- sim/(sqrt(sum(vec1^2))*sqrt(sum(vec2^2)))
+    return(sim)
+}
+
+
+difference <- function(string, model) {
+    words <- tokenize(string)
+    num_words <- length(words)
+    diff_mx <- matrix(rep(0,num_words^2), nrow=num_words, ncol=num_words)
+
+    if (num_words<3) {
+        return("Need at least three words")
+    }
+    
+    for (i in 1:num_words) {
+        if(dim(model[model$word==words[i],])[1]==0) {
+            return(paste(words[i], ": No such word in model" ))
+        }
+    }
+    
+     
+    for (i in 1:num_words) {
+        for (j in 1:num_words) {
+            sim <- similarity(words[i],words[j],model)
+            if(i!=j) {
+                diff_mx[i,j]=sim
+            }
+        }
+    }
+    return(words[which.min(rowSums(diff_mx))])
+}
+
+difference("squirrel deer human dog cat", model)
+difference("bad red good nice awful", model)
 
 
 # Word analogy ################################################################
@@ -196,12 +239,11 @@ analogy <- function(file_name, words, size)
     return(data.frame(Word = vword, CosDist = vdist, stringsAsFactors = FALSE)) 
 }    
 
-analogy("model.bin", "man woman husband", 3)
-analogy("model.bin", "man woman child", 3)
-analogy("model.bin", "man woman boy", 3)
+analogy("model300.bin", "man woman king", 3)
+analogy("model300.bin", "man woman husband", 3)
+analogy("model300.bin", "man woman boy", 3)
 
 # Word clustering #############################################################
-
 # Clustering
 tstart <- Sys.time()
 word2vec("train_data.txt", "classes.txt", 
@@ -222,4 +264,13 @@ clasters <- read.table("classes.txt", sep=" ", as.is = TRUE)
 names(clasters) <- c("word", "id")
 clasters <- clasters[order(clasters$id),]
 max(clasters$id)
-clasters[clasters$id==0,]
+
+clasters[clasters$word=="humor",]
+clasters[clasters$id==2952,][1:15,]
+
+clasters[clasters$word=="cat",]
+clasters[clasters$id==241,]
+
+clasters[clasters$word=="military",]
+clasters[clasters$id==322,]
+
