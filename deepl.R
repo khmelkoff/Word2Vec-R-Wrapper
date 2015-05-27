@@ -133,8 +133,8 @@ word2vec <- function(train_file, output_file,
 
 # Train model
 tstart <- Sys.time()
-word2vec("train_data.txt", "model300.txt", 
-         binary=0, # output format, 1-binary, 0-txt
+word2vec("train_data.txt", "model300new.txt", 
+         binary=1, # output format, 1-binary, 0-txt
          cbow=0, # skip-gram (0) or continuous bag of words (1)
          num_threads = 6, # num of workers
          num_features = 300, # word vector dimensionality
@@ -245,6 +245,9 @@ analogy("model300.bin", "man woman boy", 3)
 
 # Word clustering #############################################################
 # Clustering
+dyn.unload("dll/word2vec.dll") # if the model is trained again to reset the internal counter
+dyn.load("dll/word2vec.dll")
+
 tstart <- Sys.time()
 word2vec("train_data.txt", "classes.txt", 
          binary=1, # output format, 1-binary, 0-txt
@@ -273,4 +276,90 @@ clasters[clasters$id==241,]
 
 clasters[clasters$word=="military",]
 clasters[clasters$id==322,]
+
+# Phrases #####################################################################
+# dyn.unload("dll/word2phrase.dll")
+dyn.load("dll/word2phrase.dll")
+
+word2phrase <- function(train_file,
+                        output_file,
+                        min_count,
+                        threshold)
+{
+    if (!file.exists(train_file)) stop("Can't find the train file!")
+    train_dir <- dirname(train_file)
+    
+    if(missing(output_file)) {
+        output_file <- gsub(gsub("^.*\\.", "", basename(train_file)), "bin", basename(train_file))
+        output_file <- file.path(train_dir, output_file)
+    }
+    
+    outfile_dir <- dirname(output_file)
+    if (!file.exists(outfile_dir)) dir.create(outfile_dir, recursive = TRUE)
+    
+    train_file <- normalizePath(train_file, winslash = "/", mustWork = FALSE)
+    output_file <- normalizePath(output_file, winslash = "/", mustWork = FALSE)
+    
+    OUT <- .C("CWrapper_word2phrase", 
+              train_file = as.character(train_file), 
+              output_file = as.character(output_file),
+              min_count = as.character(min_count),
+              threshold = as.character(threshold))
+    
+    class(OUT) <- "word2phrase"
+    names(OUT)[2] <- "model_file"
+    cat(paste("The model was generated in '", dirname(output_file), "'!\n", sep = ""))
+    return(OUT)
+}
+
+# Train phrases
+tstart <- Sys.time()
+word2phrase("train_data.txt", 
+            "train_phrase1.txt",
+            min_count=5,   # discard words that appear less than <int> times; default is 5
+            threshold=100) # The <float> value represents threshold for forming the phrases 
+                           # (higher means less phrases); default 100
+tend <- Sys.time()
+tend - tstart
+
+tstart <- Sys.time()
+word2phrase("train_phrase1.txt", 
+            "train_phrase2.txt",
+            min_count=5,   # discard words that appear less than <int> times; default is 5
+            threshold=100) # The <float> value represents threshold for forming the phrases 
+# (higher means less phrases); default 100
+tend <- Sys.time()
+tend - tstart
+
+
+dyn.unload("dll/word2vec.dll") # if the model is trained again to reset the internal counter
+dyn.load("dll/word2vec.dll")
+
+
+# Train model
+tstart <- Sys.time()
+word2vec("train_phrase2.txt", "p_model300_2.bin", 
+         binary=1, # output format, 1-binary, 0-txt
+         cbow=0, # skip-gram (0) or continuous bag of words (1)
+         num_threads = 6, # num of workers
+         num_features = 300, # word vector dimensionality
+         window = 10, # context / window size
+         min_count = 40, # minimum word count
+         sample = 1e-3, # downsampling of frequent words
+         classes = 0 # if >0 make k-means clustering 
+)
+tend <- Sys.time()
+tend - tstart
+
+# search phrases from txt model
+pmodel <- read.table("p_model300_2.txt", sep=" ", as.is = TRUE, skip=1)
+names(pmodel)[1] <- "word"
+phrases <- pmodel$word[grep("_", pmodel$word)]
+
+distance("p_model300_2.bin", "serial_killer", 10)
+distance("p_model300_2.bin", "crouching_tiger_hidden_dragon", 10)
+distance("p_model300_2.bin", "academy_award_winning", 10)
+
+#academy_award_winning
+#
 
